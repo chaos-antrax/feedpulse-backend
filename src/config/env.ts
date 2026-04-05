@@ -55,5 +55,9 @@ export const env = {
   JWT_SECRET: jwtSecret,
   ADMIN_EMAIL: readRequiredEnv("ADMIN_EMAIL"),
   ADMIN_PASSWORD: readRequiredEnv("ADMIN_PASSWORD"),
+  FEEDBACK_RATE_LIMIT_ENABLED: readBooleanEnv(
+    "FEEDBACK_RATE_LIMIT_ENABLED",
+    true,
+  ),
   TRUST_PROXY: readBooleanEnv("TRUST_PROXY", false),
 } as const;

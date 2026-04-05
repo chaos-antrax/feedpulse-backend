@@ -1,7 +1,10 @@
 import { NextFunction, Request, Response } from "express";
+import mongoose from "mongoose";
 
+import { env } from "../config/env";
 import { AppError } from "./errorHandler.middleware";
 import { FeedbackRateLimitModel } from "../models/feedbackRateLimit.model";
+import { logger } from "../utils/logger";
 
 const MAX_SUBMISSIONS_PER_WINDOW = 5;
 const WINDOW_MS = 60 * 60 * 1000;
@@ -19,6 +22,10 @@ export async function limitFeedbackSubmissions(
   res: Response,
   next: NextFunction,
 ) {
+  if (!env.FEEDBACK_RATE_LIMIT_ENABLED) {
+    return next();
+  }
+
   const now = new Date();
   const windowStart = new Date(now.getTime() - WINDOW_MS);
   const expiresAt = new Date(now.getTime() + WINDOW_MS);
@@ -63,6 +70,11 @@ export async function limitFeedbackSubmissions(
   const latestSubmission =
     rateLimitState?.submissions[rateLimitState.submissions.length - 1];
   const wasAccepted = latestSubmission?.getTime() === now.getTime();
+  // const submissionCount = rateLimitState?.submissions.length ?? 0;
+
+  // logger.info(
+  //   `Feedback rate limit check: db=${mongoose.connection.name || "unknown"} collection=${FeedbackRateLimitModel.collection.name} ip=${key} allowed=${wasAccepted} submissionsInWindow=${submissionCount}`,
+  // );
 
   if (wasAccepted) {
     return next();
@@ -73,7 +85,9 @@ export async function limitFeedbackSubmissions(
   if (oldestSubmission) {
     const retryAfterSeconds = Math.max(
       1,
-      Math.ceil((oldestSubmission.getTime() + WINDOW_MS - now.getTime()) / 1000),
+      Math.ceil(
+        (oldestSubmission.getTime() + WINDOW_MS - now.getTime()) / 1000,
+      ),
     );
 
     res.setHeader("Retry-After", retryAfterSeconds.toString());
